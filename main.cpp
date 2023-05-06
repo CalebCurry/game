@@ -31,10 +31,22 @@ int main() {
     // Initialize the counter
     unsigned int counter = 0;
 
+    sf::Texture characterTexture;
+    if (!characterTexture.loadFromFile("tank.png")) {
+        std::cerr << "Error loading character texture" << std::endl;
+        return 1;
+    }
+
+    sf::Sprite character;
+    sf::Vector2u textureSize = characterTexture.getSize();
+    character.setTexture(characterTexture);
+    character.setScale(.25, .25);
+    character.setOrigin(textureSize.x / 2.0f, textureSize.y / 2.0f);
+
     // Create a rectangle shape for the character
-    sf::RectangleShape character(sf::Vector2f(50.0f, 50.0f));
-    character.setFillColor(sf::Color::Red);
-    character.setPosition(295.0f, 430.0f);
+    // sf::RectangleShape character(sf::Vector2f(50.0f, 50.0f));
+    // character.setFillColor(sf::Color::Red);
+    // character.setPosition(295.0f, 430.0f);
 
     // Set the movement speed of the character
     float speed = 600.0f;
@@ -118,18 +130,47 @@ int main() {
         }
 
         // Handle keyboard input
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::W)) {
+
+        float targetRotation = character.getRotation();
+
+        bool moveUp = sf::Keyboard::isKeyPressed(sf::Keyboard::W);
+        bool moveDown = sf::Keyboard::isKeyPressed(sf::Keyboard::S);
+        bool moveLeft = sf::Keyboard::isKeyPressed(sf::Keyboard::A);
+        bool moveRight = sf::Keyboard::isKeyPressed(sf::Keyboard::D);
+
+        if (moveUp && moveLeft) {
+            targetRotation = 45;
+            character.move(-speed * deltaTime.asSeconds() / sqrt(2),
+                           -speed * deltaTime.asSeconds() / sqrt(2));
+        } else if (moveUp && moveRight) {
+            targetRotation = 135;
+            character.move(speed * deltaTime.asSeconds() / sqrt(2),
+                           -speed * deltaTime.asSeconds() / sqrt(2));
+        } else if (moveDown && moveLeft) {
+            targetRotation = 315;
+            character.move(-speed * deltaTime.asSeconds() / sqrt(2),
+                           speed * deltaTime.asSeconds() / sqrt(2));
+        } else if (moveDown && moveRight) {
+            targetRotation = 225;
+            character.move(speed * deltaTime.asSeconds() / sqrt(2),
+                           speed * deltaTime.asSeconds() / sqrt(2));
+        } else if (moveUp) {
+            targetRotation = 90;
             character.move(0.0f, -speed * deltaTime.asSeconds());
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S)) {
+        } else if (moveDown) {
+            targetRotation = 270;
             character.move(0.0f, speed * deltaTime.asSeconds());
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::A)) {
+        } else if (moveLeft) {
+            targetRotation = 0;
             character.move(-speed * deltaTime.asSeconds(), 0.0f);
-        }
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::D)) {
+        } else if (moveRight) {
+            targetRotation = 180;
             character.move(speed * deltaTime.asSeconds(), 0.0f);
         }
+
+        character.setRotation(targetRotation);
+
+        character.setRotation(targetRotation);
 
         // Update the counter display
         counterText.setString("Projectiles stopped: " +
