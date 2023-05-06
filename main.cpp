@@ -16,8 +16,9 @@ void resetGameState(unsigned int &counter, sf::Sprite &character,
                     std::vector<sf::CircleShape> &projectiles,
                     std::vector<sf::Vector2f> &directions,
                     std::vector<sf::CircleShape> &playerProjectiles,
-                    bool &gameOver) {
+                    bool &gameOver, bool &win) {
     gameOver = false;
+    win = false;
     // Reset the counter
     counter = 0;
 
@@ -69,6 +70,9 @@ int main() {
 
     character.setPosition(WIDTH - 100.0f, HEIGHT - 100.0f);
     character.setRotation(0);
+    float enemySpeed = 200.0f;
+
+    sf::Vector2f enemyMovement(1.0f, 0.0f);
     // Create a rectangle shape for the character
     // sf::RectangleShape character(sf::Vector2f(50.0f, 50.0f));
     // character.setFillColor(sf::Color::Red);
@@ -101,6 +105,9 @@ int main() {
     float shootingInterval =
         0.1f;  // Time interval between each shot in seconds
 
+    float movementInterval = 1.0f;
+    sf::Clock movementClock;
+
     // Time interval between spawning projectiles
     float spawnInterval = 1.0f;
     sf::Clock spawnClock;
@@ -113,11 +120,20 @@ int main() {
     sf::Text gameOverText;
     gameOverText.setFont(font);
     gameOverText.setString("Game Over! Press R to restart");
+
+    sf::Text winText;
+    winText.setFont(font);
+    winText.setString("You WIN!!!!! Press R to restart");
+
+    winText.setCharacterSize(36);
+    winText.setFillColor(sf::Color::Black);
+    winText.setPosition(WIDTH / 2 - 200, HEIGHT / 2 - 30);
+
     gameOverText.setCharacterSize(36);
     gameOverText.setFillColor(sf::Color::Black);
     gameOverText.setPosition(WIDTH / 2 - 200, HEIGHT / 2 - 30);
     bool gameOver = false;
-
+    bool win = false;
     while (window.isOpen()) {
         // Handle events
         sf::Event event;
@@ -128,7 +144,7 @@ int main() {
             if (gameOver && event.key.code == sf::Keyboard::R) {
                 std::cout << "test" << std::endl;
                 resetGameState(counter, character, enemy, projectiles,
-                               directions, playerProjectiles, gameOver);
+                               directions, playerProjectiles, gameOver, win);
             }
         }
 
@@ -148,6 +164,34 @@ int main() {
         sf::Time deltaTime = currentTime - lastTime;
         lastTime = currentTime;
 
+        enemy.move(enemyMovement * enemySpeed * deltaTime.asSeconds());
+
+        // Reverse the movement vector if the enemy reaches the edges of the
+        // screen
+        if (enemy.getPosition().x < 0 ||
+            enemy.getPosition().x + enemy.getSize().x > WIDTH) {
+            enemyMovement.x = -enemyMovement.x;
+        }
+        if (enemy.getPosition().y < 0 ||
+            enemy.getPosition().y + enemy.getSize().y > HEIGHT) {
+            enemyMovement.y = -enemyMovement.y;
+        }
+
+        // Randomly change the enemy's direction
+        if (movementClock.getElapsedTime().asSeconds() > movementInterval) {
+            float randomAngle = (float)rand() / (float)RAND_MAX * 360.0f;
+            enemyMovement.x = std::cos(randomAngle * 3.14159265f / 180.0f);
+            enemyMovement.y = std::sin(randomAngle * 3.14159265f / 180.0f);
+            movementInterval = ((float)rand() / (float)RAND_MAX) +
+                               0.5f;  // Set new movement interval between 0.5f
+                                      // and 1.5f seconds
+            movementClock.restart();
+        }
+        // Move the enemy
+        enemy.move(enemyMovement * enemySpeed * deltaTime.asSeconds());
+        if (character.getGlobalBounds().intersects(enemy.getGlobalBounds())) {
+            gameOver = true;
+        }
         // Move the player's projectiles
         for (size_t i = 0; i < playerProjectiles.size(); ++i) {
             float angleRad =
@@ -185,6 +229,7 @@ int main() {
 
                 // Set the game over flag
                 gameOver = true;
+                win = true;
                 break;
             }
         }
@@ -196,7 +241,7 @@ int main() {
             // Call the resetGameState function to set the
             // initial game state
             resetGameState(counter, character, enemy, projectiles, directions,
-                           playerProjectiles, gameOver);
+                           playerProjectiles, gameOver, win);
             gameOver = false;
         }
 
@@ -309,9 +354,11 @@ int main() {
             }
             window.draw(enemy);
         }
-        if (gameOver) {
-            window.draw(gameOverText);
+        if (gameOver && win) {
+            window.draw(winText);
 
+        } else if (gameOver) {
+            window.draw(gameOverText);
         }  // Display the window
 
         window.display();
