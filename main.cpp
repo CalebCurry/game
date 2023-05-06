@@ -7,10 +7,34 @@
 #include <ctime>
 #include <iostream>
 #include <vector>
+
+const int WIDTH = 1280;
+const int HEIGHT = 720;
+// Add a function to reset the game state
+void resetGameState(unsigned int &counter, sf::Sprite &character,
+                    sf::RectangleShape &enemy,
+                    std::vector<sf::CircleShape> &projectiles,
+                    std::vector<sf::Vector2f> &directions,
+                    std::vector<sf::CircleShape> &playerProjectiles,
+                    bool &gameOver) {
+    gameOver = false;
+    // Reset the counter
+    counter = 0;
+
+    character.setPosition(WIDTH - 100.0f, HEIGHT - 100.0f);
+    character.setRotation(0);
+
+    // Reset the enemy's position
+    enemy.setPosition(295.0f, 50.0f);
+
+    // Clear the projectiles and directions vectors
+    projectiles.clear();
+    directions.clear();
+
+    // Clear the playerProjectiles vector
+    playerProjectiles.clear();
+}
 int main() {
-    // Create a window
-    const int WIDTH = 1280;
-    const int HEIGHT = 720;
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window");
 
     // Load a font
@@ -43,6 +67,8 @@ int main() {
     character.setScale(.25, .25);
     character.setOrigin(textureSize.x / 2.0f, textureSize.y / 2.0f);
 
+    character.setPosition(WIDTH - 100.0f, HEIGHT - 100.0f);
+    character.setRotation(0);
     // Create a rectangle shape for the character
     // sf::RectangleShape character(sf::Vector2f(50.0f, 50.0f));
     // character.setFillColor(sf::Color::Red);
@@ -84,6 +110,12 @@ int main() {
     sf::Time lastTime = clock.getElapsedTime();
 
     // Display the character, projectiles, and enemy
+    sf::Text gameOverText;
+    gameOverText.setFont(font);
+    gameOverText.setString("Game Over! Press R to restart");
+    gameOverText.setCharacterSize(36);
+    gameOverText.setFillColor(sf::Color::Black);
+    gameOverText.setPosition(WIDTH / 2 - 200, HEIGHT / 2 - 30);
     bool gameOver = false;
 
     while (window.isOpen()) {
@@ -92,6 +124,11 @@ int main() {
         while (window.pollEvent(event)) {
             if (event.type == sf::Event::Closed) {
                 window.close();
+            }
+            if (gameOver && event.key.code == sf::Keyboard::R) {
+                std::cout << "test" << std::endl;
+                resetGameState(counter, character, enemy, projectiles,
+                               directions, playerProjectiles, gameOver);
             }
         }
 
@@ -151,6 +188,17 @@ int main() {
                 break;
             }
         }
+        if (gameOver && sf::Keyboard::isKeyPressed(sf::Keyboard::R)) {
+            // Reset game variables
+            // (Reinitialize the player, enemy, projectiles, counter, etc.)
+
+            // Set the game paused flag to false
+            // Call the resetGameState function to set the
+            // initial game state
+            resetGameState(counter, character, enemy, projectiles, directions,
+                           playerProjectiles, gameOver);
+            gameOver = false;
+        }
 
         // Spawn a new projectile if enough time has passed
         if (spawnClock.getElapsedTime().asSeconds() > spawnInterval) {
@@ -193,21 +241,7 @@ int main() {
                 directions.erase(directions.begin() + i);
 
                 // Increment the counter
-                counter++;
-
-                // Break out of the loop to prevent invalid access
-                break;
-            }
-        }
-
-        for (size_t i = 0; i < projectiles.size(); i++) {
-            if (character.getGlobalBounds().intersects(
-                    projectiles[i].getGlobalBounds())) {
-                // (existing code)
-
-                // Set the game over flag
                 gameOver = true;
-                break;
             }
         }
 
@@ -252,33 +286,34 @@ int main() {
 
         character.setRotation(targetRotation);
 
-        character.setRotation(targetRotation);
-
-        // Update the counter display
-        counterText.setString("Projectiles stopped: " +
-                              std::to_string(counter));
-
-        if (gameOver) {
-            // Close the window
-            window.close();
+        for (auto &projectile : projectiles) {
+            if (character.getGlobalBounds().intersects(
+                    projectile.getGlobalBounds())) {
+                gameOver = true;
+                break;
+            }
         }
         // Clear the window
         window.clear(sf::Color::White);
 
-        // Draw the player's projectiles
-        for (const auto &playerProjectile : playerProjectiles) {
-            window.draw(playerProjectile);
-        }
+        if (!gameOver) {
+            // Draw the player's projectiles
+            for (const auto &playerProjectile : playerProjectiles) {
+                window.draw(playerProjectile);
+            }
 
-        // Draw the character, projectiles, enemy, and counter text
-        window.draw(character);
-        for (const auto &projectile : projectiles) {
-            window.draw(projectile);
+            // Draw the character, projectiles, enemy, and counter text
+            window.draw(character);
+            for (const auto &projectile : projectiles) {
+                window.draw(projectile);
+            }
+            window.draw(enemy);
         }
-        window.draw(enemy);
-        window.draw(counterText);
+        if (gameOver) {
+            window.draw(gameOverText);
 
-        // Display the window
+        }  // Display the window
+
         window.display();
     }
 
