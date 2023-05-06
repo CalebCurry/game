@@ -60,8 +60,20 @@ int main() {
     std::vector<sf::CircleShape> projectiles;
     std::vector<sf::Vector2f> directions;
 
-    // Set the movement speed of the projectiles
-    float projectileSpeed = 300.0f;
+    std::vector<sf::CircleShape> playerProjectiles;
+    float playerProjectileSpeed = 500.0f;
+    const int maxPlayerProjectiles = 4;
+
+    sf::CircleShape playerProjectile(5.0f);
+    playerProjectile.setFillColor(sf::Color::Green);
+
+    float projectileSpeed = 500.0f;
+    bool playerProjectileActive = false;
+
+    // Add a shooting clock and interval
+    sf::Clock shootingClock;
+    float shootingInterval =
+        0.1f;  // Time interval between each shot in seconds
 
     // Time interval between spawning projectiles
     float spawnInterval = 1.0f;
@@ -72,6 +84,8 @@ int main() {
     sf::Time lastTime = clock.getElapsedTime();
 
     // Display the character, projectiles, and enemy
+    bool gameOver = false;
+
     while (window.isOpen()) {
         // Handle events
         sf::Event event;
@@ -81,10 +95,67 @@ int main() {
             }
         }
 
-        // Calculate delta time for consistent movement speed
+        // Replace the spacebar key-press handling code with this
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::Space) &&
+            playerProjectiles.size() < maxPlayerProjectiles &&
+            shootingClock.getElapsedTime().asSeconds() > shootingInterval) {
+            sf::CircleShape newPlayerProjectile(5.0f);
+            newPlayerProjectile.setFillColor(sf::Color::Green);
+            newPlayerProjectile.setPosition(character.getPosition());
+            newPlayerProjectile.setRotation(character.getRotation());
+            playerProjectiles.push_back(newPlayerProjectile);
+            shootingClock.restart();
+        }
+
         sf::Time currentTime = clock.getElapsedTime();
         sf::Time deltaTime = currentTime - lastTime;
         lastTime = currentTime;
+
+        // Move the player's projectiles
+        for (size_t i = 0; i < playerProjectiles.size(); ++i) {
+            float angleRad =
+                playerProjectiles[i].getRotation() * 3.14159265f / 180.f;
+            playerProjectiles[i].move(
+                -playerProjectileSpeed * deltaTime.asSeconds() *
+                    std::cos(angleRad),
+                -playerProjectileSpeed * deltaTime.asSeconds() *
+                    std::sin(angleRad));
+
+            // Remove the projectile if it goes off the screen
+            if (playerProjectiles[i].getPosition().x < 0 ||
+                playerProjectiles[i].getPosition().x > WIDTH ||
+                playerProjectiles[i].getPosition().y < 0 ||
+                playerProjectiles[i].getPosition().y > HEIGHT) {
+                playerProjectiles.erase(playerProjectiles.begin() + i);
+                --i;
+            }
+        }
+
+        // Reset the player's projectile if it goes off the screen
+        if (playerProjectile.getPosition().x < 0 ||
+            playerProjectile.getPosition().x > WIDTH ||
+            playerProjectile.getPosition().y < 0 ||
+            playerProjectile.getPosition().y > HEIGHT) {
+            playerProjectileActive = false;
+        }
+
+        for (size_t i = 0; i < playerProjectiles.size(); i++) {
+            if (enemy.getGlobalBounds().intersects(
+                    playerProjectiles[i].getGlobalBounds())) {
+                // Remove the projectile
+                playerProjectiles.erase(playerProjectiles.begin() + i);
+                --i;
+
+                // Set the game over flag
+                gameOver = true;
+                break;
+            }
+        }
+
+        // Spawn a new projectile if enough time has passed
+        if (spawnClock.getElapsedTime().asSeconds() > spawnInterval) {
+            //... (previous code for spawning enemy projectiles)
+        }
 
         // Spawn a new projectile if enough time has passed
         if (spawnClock.getElapsedTime().asSeconds() > spawnInterval) {
@@ -125,6 +196,17 @@ int main() {
                 counter++;
 
                 // Break out of the loop to prevent invalid access
+                break;
+            }
+        }
+
+        for (size_t i = 0; i < projectiles.size(); i++) {
+            if (character.getGlobalBounds().intersects(
+                    projectiles[i].getGlobalBounds())) {
+                // (existing code)
+
+                // Set the game over flag
+                gameOver = true;
                 break;
             }
         }
@@ -176,8 +258,17 @@ int main() {
         counterText.setString("Projectiles stopped: " +
                               std::to_string(counter));
 
+        if (gameOver) {
+            // Close the window
+            window.close();
+        }
         // Clear the window
         window.clear(sf::Color::White);
+
+        // Draw the player's projectiles
+        for (const auto &playerProjectile : playerProjectiles) {
+            window.draw(playerProjectile);
+        }
 
         // Draw the character, projectiles, enemy, and counter text
         window.draw(character);
