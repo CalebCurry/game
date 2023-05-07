@@ -3,14 +3,26 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/Graphics/Font.hpp>
 #include <SFML/Graphics/Text.hpp>
+#include <chrono>
 #include <cstdlib>
 #include <ctime>
 #include <iostream>
+#include <random>  // Include the random number generator header
+#include <random>
 #include <vector>
 
+const bool debug = true;
 const int WIDTH = 1280;
 const int HEIGHT = 720;
 // Add a function to reset the game state
+
+// Function to check AABB collision
+bool checkCollision(const sf::Sprite &sprite1, const sf::Sprite &sprite2) {
+    sf::FloatRect rect1 = sprite1.getGlobalBounds();
+    sf::FloatRect rect2 = sprite2.getGlobalBounds();
+    return rect1.intersects(rect2);
+}
+
 void resetGameState(unsigned int &counter, sf::Sprite &character,
                     sf::RectangleShape &enemy,
                     std::vector<sf::CircleShape> &projectiles,
@@ -45,6 +57,29 @@ int main() {
         std::cerr << "Error loading font" << std::endl;
         return 1;
     }
+
+    sf::Texture obstacleTexture;
+    if (!obstacleTexture.loadFromFile("wall.png")) {
+        // Handle loading error
+        std::cerr << "Error loading obstacle texture." << std::endl;
+    }
+
+    sf::Sprite obstacle;
+    obstacle.setTexture(obstacleTexture);
+
+    // Inside the main function, after loading the texture
+    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    std::default_random_engine generator(seed);
+
+    std::uniform_int_distribution<int> wallCountDistribution(2, 5);
+    std::uniform_int_distribution<int> positionDistribution(
+        50, window.getSize().x - 50);
+
+    int wallCount = wallCountDistribution(generator);
+    std::vector<sf::Sprite> walls(wallCount, sf::Sprite(obstacleTexture));
+
+    obstacle.setPosition(220, 220);
+    obstacle.setScale(0.5f, 0.5f);
 
     // Create a text object for the counter display
     sf::Text counterText;
@@ -134,7 +169,17 @@ int main() {
     gameOverText.setPosition(WIDTH / 2 - 200, HEIGHT / 2 - 30);
     bool gameOver = false;
     bool win = false;
+
+    // ...
+
+    for (int i = 0; i < wallCount; ++i) {
+        walls[i].setPosition(positionDistribution(generator),
+                             positionDistribution(generator));
+        walls[i].setScale(0.5f, 0.5f);
+    }
+
     while (window.isOpen()) {
+        sf::Vector2f previousCharacterPosition = character.getPosition();
         // Handle events
         sf::Event event;
         while (window.pollEvent(event)) {
@@ -285,8 +330,9 @@ int main() {
                 projectiles.erase(projectiles.begin() + i);
                 directions.erase(directions.begin() + i);
 
-                // Increment the counter
-                gameOver = true;
+                if (!debug) {
+                    gameOver = true;
+                }
             }
         }
 
@@ -331,6 +377,13 @@ int main() {
 
         character.setRotation(targetRotation);
 
+        for (const auto &wall : walls) {
+            window.draw(wall);
+            if (checkCollision(character, wall)) {
+                character.setPosition(previousCharacterPosition);
+            }
+        }
+
         for (auto &projectile : projectiles) {
             if (character.getGlobalBounds().intersects(
                     projectile.getGlobalBounds())) {
@@ -342,6 +395,11 @@ int main() {
         window.clear(sf::Color::White);
 
         if (!gameOver) {
+            // Draw the walls
+            for (const auto &wall : walls) {
+                window.draw(wall);
+            }
+
             // Draw the player's projectiles
             for (const auto &playerProjectile : playerProjectiles) {
                 window.draw(playerProjectile);
