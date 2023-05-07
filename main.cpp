@@ -28,7 +28,7 @@ void resetGameState(unsigned int &counter, sf::Sprite &character,
                     std::vector<sf::CircleShape> &projectiles,
                     std::vector<sf::Vector2f> &directions,
                     std::vector<sf::CircleShape> &playerProjectiles,
-                    bool &gameOver, bool &win) {
+                    bool &gameOver, bool &win, std::vector<sf::Sprite> &walls) {
     gameOver = false;
     win = false;
     // Reset the counter
@@ -46,6 +46,22 @@ void resetGameState(unsigned int &counter, sf::Sprite &character,
 
     // Clear the playerProjectiles vector
     playerProjectiles.clear();
+    // Generate a new seed based on the current time
+    auto currentTime =
+        std::chrono::system_clock::now().time_since_epoch().count();
+    unsigned newSeed = static_cast<unsigned>(currentTime);
+
+    // Set the new seed for the random number generator
+    std::srand(newSeed);
+    for (auto &wall : walls) {
+        float newX = static_cast<float>(
+            std::rand() %
+            (WIDTH - static_cast<int>(wall.getGlobalBounds().width)));
+        float newY = static_cast<float>(
+            std::rand() %
+            (HEIGHT - static_cast<int>(wall.getGlobalBounds().height)));
+        wall.setPosition(newX, newY);
+    }
 }
 int main() {
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window");
@@ -187,9 +203,9 @@ int main() {
                 window.close();
             }
             if (gameOver && event.key.code == sf::Keyboard::R) {
-                std::cout << "test" << std::endl;
                 resetGameState(counter, character, enemy, projectiles,
-                               directions, playerProjectiles, gameOver, win);
+                               directions, playerProjectiles, gameOver, win,
+                               walls);
             }
         }
 
@@ -239,6 +255,18 @@ int main() {
         }
         // Move the player's projectiles
         for (size_t i = 0; i < playerProjectiles.size(); ++i) {
+            for (const auto &wall : walls) {
+                if (wall.getGlobalBounds().intersects(
+                        playerProjectiles[i].getGlobalBounds())) {
+                    playerProjectiles.erase(playerProjectiles.begin() + i);
+
+                    playerProjectileActive = false;
+
+                    // playerProjectiles.erase(playerProjectiles.begin() + i);
+
+                    break;
+                }
+            }
             float angleRad =
                 playerProjectiles[i].getRotation() * 3.14159265f / 180.f;
             playerProjectiles[i].move(
@@ -254,6 +282,9 @@ int main() {
                 playerProjectiles[i].getPosition().y > HEIGHT) {
                 playerProjectiles.erase(playerProjectiles.begin() + i);
                 --i;
+
+                // Check for collisions between the player's projectile and the
+                // walls
             }
         }
 
@@ -286,7 +317,7 @@ int main() {
             // Call the resetGameState function to set the
             // initial game state
             resetGameState(counter, character, enemy, projectiles, directions,
-                           playerProjectiles, gameOver, win);
+                           playerProjectiles, gameOver, win, walls);
             gameOver = false;
         }
 
