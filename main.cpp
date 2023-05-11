@@ -12,8 +12,8 @@
 #include <vector>
 
 const bool debug = true;
-const int WIDTH = 1280;
-const int HEIGHT = 720;
+const int WIDTH = 1920;
+const int HEIGHT = 1080;
 // Add a function to reset the game state
 
 // Function to check AABB collision
@@ -24,7 +24,7 @@ bool checkCollision(const sf::Sprite &sprite1, const sf::Sprite &sprite2) {
 }
 
 void resetGameState(unsigned int &counter, sf::Sprite &character,
-                    sf::RectangleShape &enemy,
+                    sf::Sprite &enemy,
                     std::vector<sf::CircleShape> &projectiles,
                     std::vector<sf::Vector2f> &directions,
                     std::vector<sf::CircleShape> &playerProjectiles,
@@ -36,9 +36,6 @@ void resetGameState(unsigned int &counter, sf::Sprite &character,
 
     character.setPosition(WIDTH - 100.0f, HEIGHT - 100.0f);
     character.setRotation(0);
-
-    // Reset the enemy's position
-    enemy.setPosition(295.0f, 50.0f);
 
     // Clear the projectiles and directions vectors
     projectiles.clear();
@@ -64,6 +61,39 @@ void resetGameState(unsigned int &counter, sf::Sprite &character,
     }
 }
 int main() {
+    sf::Texture enemyTexture;
+    if (!enemyTexture.loadFromFile("saucer.png")) {
+        std::cerr << "Error loading character texture" << std::endl;
+        //
+    }
+
+    sf::Sprite enemy;
+    sf::Vector2u enemySize = enemyTexture.getSize();
+    enemy.setTexture(enemyTexture);
+
+    enemy.setScale(.25, .25);
+    enemy.setOrigin(enemySize.x / 2.0f, enemySize.y / 2.0f);
+
+    enemy.setPosition(WIDTH - 100.0f, HEIGHT - 100.0f);
+    enemy.setRotation(0);
+
+    // Set the enemy sprite's position and scale
+    sf::Vector2f enemyStartingPosition(500, 100);
+    float enemyScaleFactor = 0.25f;
+    enemy.setPosition(enemyStartingPosition);
+    enemy.setScale(enemyScaleFactor, enemyScaleFactor);
+    // Reset the enemy's position
+    enemy.setPosition(295.0f, 50.0f);
+    sf::Texture backgroundTexture;
+    if (!backgroundTexture.loadFromFile("grass.png")) {
+        // Handle error
+    }
+    backgroundTexture.setRepeated(true);
+
+    sf::Sprite backgroundSprite;
+    backgroundSprite.setTexture(backgroundTexture);
+    backgroundSprite.setTextureRect(sf::IntRect(0, 0, WIDTH, HEIGHT));
+
     sf::RenderWindow window(sf::VideoMode(WIDTH, HEIGHT), "SFML Window");
 
     // Load a font
@@ -91,7 +121,8 @@ int main() {
     std::uniform_int_distribution<int> positionDistribution(
         50, window.getSize().x - 50);
 
-    int wallCount = wallCountDistribution(generator);
+    int wallCount = 10;
+
     std::vector<sf::Sprite> walls(wallCount, sf::Sprite(obstacleTexture));
 
     obstacle.setPosition(220, 220);
@@ -133,8 +164,6 @@ int main() {
     float speed = 600.0f;
 
     // Create a rectangle shape for the enemy
-    sf::RectangleShape enemy(sf::Vector2f(50.0f, 50.0f));
-    enemy.setFillColor(sf::Color::Green);
     enemy.setPosition(295.0f, 50.0f);
 
     // Create a circle shape for the projectiles
@@ -148,13 +177,13 @@ int main() {
     sf::CircleShape playerProjectile(5.0f);
     playerProjectile.setFillColor(sf::Color::Green);
 
-    float projectileSpeed = 500.0f;
+    float projectileSpeed = 400.0f;
     bool playerProjectileActive = false;
 
     // Add a shooting clock and interval
     sf::Clock shootingClock;
     float shootingInterval =
-        0.1f;  // Time interval between each shot in seconds
+        0.15f;  // Time interval between each shot in seconds
 
     float movementInterval = 1.0f;
     sf::Clock movementClock;
@@ -230,11 +259,11 @@ int main() {
         // Reverse the movement vector if the enemy reaches the edges of the
         // screen
         if (enemy.getPosition().x < 0 ||
-            enemy.getPosition().x + enemy.getSize().x > WIDTH) {
+            enemy.getPosition().x + enemy.getGlobalBounds().width > WIDTH) {
             enemyMovement.x = -enemyMovement.x;
         }
         if (enemy.getPosition().y < 0 ||
-            enemy.getPosition().y + enemy.getSize().y > HEIGHT) {
+            enemy.getPosition().y + enemy.getGlobalBounds().height > HEIGHT) {
             enemyMovement.y = -enemyMovement.y;
         }
 
@@ -251,7 +280,7 @@ int main() {
         // Move the enemy
         enemy.move(enemyMovement * enemySpeed * deltaTime.asSeconds());
         if (character.getGlobalBounds().intersects(enemy.getGlobalBounds())) {
-            gameOver = true;
+            // gameOver = true;
         }
         // Move the player's projectiles
         for (size_t i = 0; i < playerProjectiles.size(); ++i) {
@@ -329,11 +358,10 @@ int main() {
         // Spawn a new projectile if enough time has passed
         if (spawnClock.getElapsedTime().asSeconds() > spawnInterval) {
             sf::CircleShape newProjectile(10.0f);
-            newProjectile.setFillColor(sf::Color::Blue);
+            newProjectile.setFillColor(sf::Color::Magenta);
             newProjectile.setPosition(
-                enemy.getPosition().x + enemy.getSize().x / 2,
-                enemy.getPosition().y + enemy.getSize().y);
-
+                enemy.getPosition().x + enemySize.x * enemyScaleFactor / 2,
+                enemy.getPosition().y + enemySize.y * enemyScaleFactor / 2);
             // Calculate the direction to shoot the projectile
             sf::Vector2f direction =
                 character.getPosition() - newProjectile.getPosition();
@@ -361,9 +389,7 @@ int main() {
                 projectiles.erase(projectiles.begin() + i);
                 directions.erase(directions.begin() + i);
 
-                if (!debug) {
-                    gameOver = true;
-                }
+                gameOver = true;
             }
         }
 
@@ -427,6 +453,10 @@ int main() {
 
         if (!gameOver) {
             // Draw the walls
+            window.draw(backgroundSprite);
+
+            // Draw other objects (characters, walls, projectiles, etc.)
+
             for (const auto &wall : walls) {
                 window.draw(wall);
             }
